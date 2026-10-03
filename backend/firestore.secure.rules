@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cloud data is accessed only by callable Functions using Admin SDK.
+    // JWT validity alone does not prove the session has not been revoked.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

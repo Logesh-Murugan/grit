@@ -1,0 +1,1 @@
+{"name":"grit-functions","private":true,"type":"module","main":"index.js","engines":{"node":"22"},"scripts":{"check":"node --check index.js","test":"node --test session-policy.test.js"},"dependencies":{"firebase-admin":"^13.0.0","firebase-functions":"^6.0.0"}}

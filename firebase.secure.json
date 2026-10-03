@@ -1,0 +1,1 @@
+{"firestore":{"rules":"backend/firestore.secure.rules"},"functions":[{"source":"backend/functions","codebase":"grit"}]}

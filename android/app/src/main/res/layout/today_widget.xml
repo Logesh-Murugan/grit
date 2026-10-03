@@ -1,0 +1,7 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="@drawable/widget_background">
+  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Today · grit" android:textSize="20sp" android:textColor="@color/widget_accent" android:textStyle="bold" />
+  <TextView android:id="@+id/widget_count" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:textColor="@color/widget_secondary" android:layout_marginBottom="8dp" />
+  <LinearLayout android:id="@+id/widget_rows" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+  <TextView android:id="@+id/widget_empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="15sp" android:textColor="@color/widget_text" android:paddingTop="12dp" android:paddingBottom="12dp" />
+  <TextView android:id="@+id/widget_add" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:text="＋  Add task" android:textSize="14sp" android:textColor="@color/widget_accent" />
+</LinearLayout>

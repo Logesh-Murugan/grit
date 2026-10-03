@@ -1,0 +1,13 @@
+# iOS build and widget setup
+
+This repository has the Flutter Runner target (iOS 15+) and embedded GritTodayWidget target (iOS 17+). It has not been compiled with Xcode. Use a Mac with the Flutter SDK, a current compatible Xcode and an iPhone for acceptance testing.
+
+1. Run `flutter pub get` on the Mac. Regenerate machine-local iOS Flutter configuration with `flutter build ios --config-only --no-codesign`. Do not copy Windows Generated.xcconfig or ephemeral files.
+2. Open `ios/Runner.xcworkspace`. Select your Apple development team on both Runner and GritTodayWidget. Replace the example bundle identifiers with identifiers you own. The widget identifier must extend the app identifier.
+3. Register one App Group in your Apple developer account. Enable that exact group on both targets. Replace `group.app.grit.grit` in both entitlements, both Info.plist GritAppGroup values and the fallback in Shared/GritWidgetStore.swift. Both targets must use the same group. This step needs your signing/provisioning access; no Apple account was configured here.
+4. Verify both targets' versions match and that Runner embeds GritTodayWidget.appex. Swift sources in Shared belong to both targets. GritTodayWidget.swift belongs only to the extension. Build first without cloud configuration; the local planner and widget need no Firebase service.
+5. For Firebase authentication on iOS, register your actual iOS bundle ID in your Firebase project, supply its platform configuration and review Google sign-in URL schemes. The ignored firebase.local.json is web configuration and is not an iOS provisioning file. Secure cloud sync remains disabled until Part B deployment is verified.
+6. Build/install on an iPhone. Add “Today in GRIT” to the Home Screen. Create a task scheduled today. Verify it appears after saving, then complete it in the widget with the app closed. Reopen the app: task should be completed once. Repeat with a recurring task, a habit, account switching, relaunch and offline use. Check that a stale widget prompts reopening the next day.
+7. Test large accessibility sizes, Bold Text, Reduce Motion, VoiceOver focus order, touch targets, actual haptic strength, keyboard/sheet dismissal, safe areas and iPad split view. Test widget storage failure and locked-device behavior. The widget title uses system fonts and adapts its visible row count at accessibility sizes. Replace the generated Flutter app icon and launch assets with production GRIT artwork before release.
+
+The browser preview demonstrates navigation and local task interactions. It cannot validate iOS provisioning, widget behavior, physical haptics, system SF rendering or Dynamic Type category mapping. No IPA, App Store submission or Apple signing credentials are supplied.
