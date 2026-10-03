@@ -1,5 +1,39 @@
 import 'domain.dart';
 
+/// A planning day uses its own completion and snooze state, not today's list.
+List<Task> planningDayTasks(Iterable<Task> tasks, DateTime selected,
+    {required DateTime now,
+    bool carryOver = false,
+    bool includeUndated = false,
+    bool includeCompleted = false}) {
+  final target = day(selected);
+  final isToday = target == day(now);
+  return tasks.where((t) {
+    if (t.trashed || (!includeCompleted && t.done(target))) return false;
+    if (t.snoozedUntil != null && target.isBefore(day(t.snoozedUntil!))) {
+      return false;
+    }
+    final dailyHabit = t.category == Category.habit &&
+        (t.recurrence.isEmpty || t.recurrence == 'daily');
+    if (t.blockStart != null) {
+      if (day(t.blockStart!) == target) return true;
+      if (!dailyHabit) return false;
+    }
+    if (t.scheduled != null && day(t.scheduled!) == target) return true;
+    if (t.pinnedDay == dayKey(target)) return true;
+    if (dailyHabit) {
+      return t.scheduled == null || !target.isBefore(day(t.scheduled!));
+    }
+    if (carryOver &&
+        isToday &&
+        ((t.scheduled != null && day(t.scheduled!).isBefore(target)) ||
+            t.overdue(now))) {
+      return true;
+    }
+    return includeUndated && t.scheduled == null;
+  }).toList();
+}
+
 class Project {
   Project(
       {required this.id,

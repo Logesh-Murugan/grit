@@ -1,8 +1,8 @@
 # GRIT
 
-## Current preview — v0.12
+## Current preview — v0.13
 
-Latest fixes include five-second dismissible feedback, safe Undo after newer edits, improved Schedule drag-and-drop, and snooze clearing when scheduling. All 77 Flutter tests pass and static analysis is clean. See [verification](docs/VERIFICATION.md) for tested behavior and release limitations.
+Latest fixes include five-second dismissible feedback, safe Undo after newer edits, improved Schedule drag-and-drop, and snooze clearing when scheduling. Selected-day planning now keeps Tomorrow tasks, summaries and capture dates consistent across Schedule and Calendar. All 79 Flutter tests pass and static analysis is clean. See [verification](docs/VERIFICATION.md) for tested behavior and release limitations.
 
 Collapsing iOS-style titles, native phone tab navigation, draggable task sheets, action-sheet pickers, task swipes, spring motion, haptics and System/Light/Dark/OLED appearance. iOS Today widget extension and durable completion bridge source are included; Xcode/device verification is pending. See [docs/PART-C.md](docs/PART-C.md) and [docs/IOS-SETUP.md](docs/IOS-SETUP.md).
 

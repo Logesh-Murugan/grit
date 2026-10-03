@@ -64,3 +64,14 @@ Undo actions capture a revision and cannot apply an older snapshot after a newer
 77 Flutter tests pass, static analysis is clean, and the release web build succeeds. Regression coverage includes accessibility-enabled timeout, replacement timing, manual close, navigation-style dismissal, stale Undo after a newer edit, snooze clearing, mouse/touch drags, overlap rejection, edge scrolling and saved schedules. The full suite also covers capture parsing, recurrence, hierarchy, custom fields, focus tracking, backup validation, native widget bridge reconciliation, onboarding, responsive layouts and theme/accessibility checks. This is not a claim that every production feature or native platform is bug-free; previous cloud/native release limitations remain.
 
 Live browser verification: dragged the sample research task to 01:00, observed Undo and Close, then verified both controls and the message disappeared automatically while the scheduled block remained. Screenshot: preview-notice-dismissed-v12.png.
+
+
+## Selected-day planning fix — preview 0.13, October 3, 2026
+
+Calendar and Schedule no longer receive a task list prefiltered to Today or Upcoming. They retain project/inbox/filter/search scope and select tasks using the planning date. Tomorrow shows its own scheduled tasks, blocks and daily habits; carry-over overdue tasks are included only on Today. Snooze and daily habit completion use the selected day. A prior habit block does not suppress the next day's habit. Subtasks remain nested rather than appearing as duplicate top-level tasks.
+
+The Today planning heading changes to Tomorrow/Yesterday/date, summary uses the selected day's tasks and completions, capture defaults to that date, and chip scheduling opens on that date. The reset control explicitly reads Go to today. Today navigation resets the planning date; foreground refresh and the periodic pulse update it at midnight if the planner was following today. Future/past daily habit checks cannot alter today's completion history.
+
+79 Flutter tests pass, analysis is clean and release web compilation succeeds. New regression checks cover selected-day isolation, snooze, daily history, prior-day habit blocks, year boundary, tomorrow time blocks, nested tasks, Calendar/Schedule switching, capture date and reset navigation. Previous native/cloud release limitations remain.
+
+Live browser review verified Tomorrow / Sunday October 4 / 2026-10-04, three remaining tasks including the tomorrow-only database practice task, updated effort totals, and the explicit Go to today control. Screenshot: preview-tomorrow-v13.png.

@@ -47,6 +47,26 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
   final completingTasks = <String>{};
   bool scheduleDragging = false;
   DateTime calendarDate = day(DateTime.now());
+  DateTime lastToday = day(DateTime.now());
+  bool get datedView => layout == 'Schedule' || layout == 'Calendar';
+  String get selectedDayTitle {
+    final today = day(DateTime.now());
+    if (calendarDate == today) return 'Today';
+    if (calendarDate == DateTime(today.year, today.month, today.day + 1)) {
+      return 'Tomorrow';
+    }
+    if (calendarDate == DateTime(today.year, today.month, today.day - 1)) {
+      return 'Yesterday';
+    }
+    return dateLabel(calendarDate);
+  }
+
+  void refreshDay() {
+    final today = day(DateTime.now());
+    if (calendarDate == lastToday) calendarDate = today;
+    lastToday = today;
+  }
+
   Timer? pulse;
   final notices = TimedNotice();
   final Set<String> notified = {};
@@ -103,7 +123,7 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
     pulse = Timer.periodic(const Duration(seconds: 20), (_) {
       if (!mounted) return;
       unawaited(s.consumeWidgetCompletions());
-      setState(() {});
+      setState(refreshDay);
       for (final t in s.activeTasks.where((t) =>
           t.reminder != null &&
           !t.done(DateTime.now()) &&
@@ -122,6 +142,7 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      if (mounted) setState(refreshDay);
       unawaited(s.consumeWidgetCompletions());
     }
   }
@@ -140,6 +161,7 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
     notices.dismiss();
     setState(() {
       view = target;
+      calendarDate = day(DateTime.now());
       projectId = project;
       label = withLabel;
       filterId = withFilter;
@@ -157,7 +179,9 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
           : filterId != null
               ? s.filters.where((f) => f.id == filterId).firstOrNull?.name ??
                   'Filter'
-              : view;
+              : view == 'Today' && datedView
+                  ? selectedDayTitle
+                  : view;
   void toast(String text, {bool undo = false}) {
     final revision = s.undoRevision;
     notices.show(context, text,
@@ -184,7 +208,10 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
         (view == 'Trash' ? s.tasks.where((t) => t.trashed) : s.activeTasks)
             .where((t) => view == 'Completed'
                 ? t.done(now)
-                : view == 'Trash' || completed || !t.done(now))
+                : view == 'Trash' ||
+                    completed ||
+                    (datedView && t.category == Category.habit) ||
+                    !t.done(now))
             .toList();
     if (projectId != null) {
       list = list
@@ -202,7 +229,9 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
     } else if (view == 'Inbox') {
       list =
           list.where((t) => t.projectId == null && t.parentId == null).toList();
-    } else if (view == 'Today') {
+    } else if (datedView && (view == 'Today' || view == 'Upcoming')) {
+      list = list.where((t) => t.parentId == null).toList();
+    } else if (view == 'Today' && !datedView) {
       list = list
           .where((t) =>
               t.parentId == null &&
@@ -212,7 +241,7 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
                   (t.category == Category.habit &&
                       (t.recurrence.isEmpty || t.recurrence == 'daily'))))
           .toList();
-    } else if (view == 'Upcoming') {
+    } else if (view == 'Upcoming' && !datedView) {
       list = list
           .where((t) =>
               t.parentId == null &&
@@ -746,10 +775,22 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
             if (action != null) action
           ]));
   Widget tasksPage() {
-    final list = visibleTasks;
-    final now = DateTime.now();
-    final hasSidebar =
-        MediaQuery.sizeOf(context).width >= 1320 && view == 'Today';
+    final scoped = visibleTasks;
+    final now = datedView ? calendarDate : DateTime.now();
+    final list = layout == 'Schedule'
+        ? planningDayTasks(scoped, calendarDate,
+            now: DateTime.now(),
+            carryOver: view == 'Today' && projectId == null,
+            includeUndated: view != 'Today' || projectId != null,
+            includeCompleted: completed)
+        : scoped;
+    final summaryList = layout == 'Calendar'
+        ? planningDayTasks(scoped, calendarDate,
+            now: DateTime.now(), includeCompleted: completed)
+        : list;
+    final hasSidebar = MediaQuery.sizeOf(context).width >= 1320 &&
+        view == 'Today' &&
+        !datedView;
     final main =
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       pageHeader(
@@ -791,20 +832,23 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
                     const PopupMenuItem(
                         value: 'import', child: Text('Paste a task list'))
                   ])),
-      if (view == 'Today' && search.isEmpty && !selectMode && list.isNotEmpty)
+      if (view == 'Today' &&
+          search.isEmpty &&
+          !selectMode &&
+          summaryList.isNotEmpty)
         DayOverview(
-          remaining: list.where((t) => !t.done(now)).length,
+          remaining: summaryList.where((t) => !t.done(now)).length,
           completed: s.completedOn(now),
-          minutes: list
+          minutes: summaryList
               .where((t) => !t.done(now))
               .fold<int>(0, (n, t) => n + t.minutes),
-          onFocus: list.where((t) => !t.done(now)).isEmpty
+          onFocus: summaryList.where((t) => !t.done(now)).isEmpty
               ? null
-              : () => focus(list.firstWhere((t) => !t.done(now))),
+              : () => focus(summaryList.firstWhere((t) => !t.done(now))),
           onPlan: () => setState(() => layout = 'Schedule'),
         ),
       if (projectId != null) projectSummary(),
-      if (view == 'Today' && s.gamification) dailyNote(),
+      if (view == 'Today' && s.gamification && !datedView) dailyNote(),
       const SizedBox(height: 4),
       Wrap(
           alignment: WrapAlignment.spaceBetween,
@@ -1505,7 +1549,8 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
   }
 
   Widget _taskRow(Task t, {bool nested = false, bool card = false}) {
-    final now = DateTime.now(), done = t.done(DateTime.now());
+    final now = datedView ? calendarDate : DateTime.now();
+    final done = t.done(now);
     final subs = s.activeTasks.where((x) => x.parentId == t.id).toList();
     final color = priorityColor(t.priority);
     final p = s.project(t.projectId);
@@ -1723,6 +1768,12 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
                         : legibleColor(context, color))))
       ]);
   Future<void> completeTask(Task t) async {
+    if (datedView &&
+        t.category == Category.habit &&
+        day(calendarDate) != day(DateTime.now())) {
+      toast('Daily habits can be checked off on their day.');
+      return;
+    }
     if (completingTasks.contains(t.id)) return;
     final wasDone = t.done(DateTime.now());
     HapticFeedback.lightImpact();
@@ -1941,7 +1992,7 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
                 calendarDate.year, calendarDate.month, calendarDate.day - 1))),
         TextButton(
             onPressed: () => setState(() => calendarDate = day(DateTime.now())),
-            child: const Text('Today')),
+            child: const Text('Go to today')),
         IconButton(
             tooltip: 'Next day',
             icon: const Icon(Icons.chevron_right),
@@ -1953,8 +2004,9 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
           style: TextStyle(fontSize: 12, color: secondary(context))),
       const SizedBox(height: 12),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final t in list
-            .where((t) => t.blockStart == null && !t.done(DateTime.now())))
+        for (final t in list.where((t) =>
+            (t.blockStart == null || day(t.blockStart!) != calendarDate) &&
+            !t.done(calendarDate)))
           ScheduleTaskDrag<Task>(
               key: ValueKey('schedule-task-${t.id}'),
               onStart: () {
@@ -1967,7 +2019,7 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
                   color: Colors.transparent, child: Chip(label: Text(t.title))),
               child: ActionChip(
                   label: Text(t.title, overflow: TextOverflow.ellipsis),
-                  onPressed: () => blockTask(t))),
+                  onPressed: () => blockTask(t, date: calendarDate))),
       ]),
       const SizedBox(height: 16),
       SizedBox(
@@ -2053,10 +2105,8 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
   Widget calendarView(List<Task> list) {
     final first = DateTime(calendarDate.year, calendarDate.month, 1);
     final start = first.subtract(Duration(days: first.weekday - 1));
-    final agenda = list
-        .where((t) =>
-            t.scheduled != null && dayKey(t.scheduled!) == dayKey(calendarDate))
-        .toList();
+    final agenda = planningDayTasks(list, calendarDate,
+        now: DateTime.now(), includeCompleted: completed);
     final unscheduled = list.where((t) => t.scheduled == null).toList();
     return Column(children: [
       Row(children: [
@@ -2070,7 +2120,7 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
             icon: const Icon(Icons.chevron_left, size: 20)),
         TextButton(
             onPressed: () => setState(() => calendarDate = day(DateTime.now())),
-            child: const Text('Today')),
+            child: const Text('Go to today')),
         IconButton(
             tooltip: 'Next month',
             onPressed: () => setState(() => calendarDate =
@@ -2146,9 +2196,8 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
           itemCount: 42,
           itemBuilder: (c, i) {
             final d = DateTime(start.year, start.month, start.day + i);
-            final count = list
-                .where((t) =>
-                    t.scheduled != null && dayKey(t.scheduled!) == dayKey(d))
+            final count = planningDayTasks(list, d,
+                    now: DateTime.now(), includeCompleted: completed)
                 .length;
             final selected = dayKey(d) == dayKey(calendarDate);
             return DragTarget<Task>(
@@ -2239,7 +2288,12 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
         projectId: parent?.projectId ?? projectId,
         section: parent?.section ?? section,
         parentId: parent?.id,
-        date: date ?? (view == 'Today' ? day(DateTime.now()) : null));
+        date: date ??
+            (datedView
+                ? calendarDate
+                : view == 'Today'
+                    ? day(DateTime.now())
+                    : null));
     if (compactPlatform(context)) {
       await gritSheet<void>(context, builder);
     } else {
@@ -4184,13 +4238,13 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
                     ])));
   }
 
-  Future<void> blockTask(Task t) async {
-    final date = await showDatePicker(
+  Future<void> blockTask(Task t, {DateTime? date}) async {
+    final pickedDate = await showDatePicker(
         context: context,
-        initialDate: t.blockStart ?? t.scheduled ?? DateTime.now(),
+        initialDate: date ?? t.blockStart ?? t.scheduled ?? DateTime.now(),
         firstDate: DateTime(2020),
         lastDate: DateTime(2050));
-    if (date == null || !mounted) return;
+    if (pickedDate == null || !mounted) return;
     final time = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(
@@ -4198,7 +4252,9 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver {
     if (time == null || !mounted) return;
     try {
       s.timeBlock(
-          t, DateTime(date.year, date.month, date.day, time.hour, time.minute));
+          t,
+          DateTime(pickedDate.year, pickedDate.month, pickedDate.day, time.hour,
+              time.minute));
       toast('Time block saved', undo: true);
     } on FormatException catch (e) {
       toast(e.message);
